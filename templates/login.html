@@ -3,90 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - ChatNest</title>
+    <title>Log in - ChatNest</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="logo">💬 ChatNest</a>
+        <div class="nav-inner">
+            <a href="/" class="logo">ChatNest</a>
             <div class="nav-links">
-                <a href="/signup">Sign Up</a>
+                <a href="/signup">Sign up</a>
             </div>
         </div>
     </nav>
 
-    <div class="container">
-        <div class="card" style="max-width: 500px; margin: 40px auto;">
-            <h2 style="margin-bottom: 30px; text-align: center;">Login to ChatNest</h2>
-            
+    <div class="wrap">
+        <div class="card" style="max-width: 420px; margin: 24px auto;">
+            <h2 style="margin-bottom: 20px;">Log in</h2>
             <div id="alert-container"></div>
 
             <form id="login-form" onsubmit="handleLogin(event)">
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required>
+                    <input type="email" id="email" required>
                 </div>
-
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
+                    <input type="password" id="password" required>
                 </div>
-
                 <div class="form-group">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="remember" name="remember">
-                        <span style="font-weight: normal;">Remember me</span>
+                    <label style="display:flex;align-items:center;gap:6px;font-weight:normal;">
+                        <input type="checkbox" id="remember"> Remember me
                     </label>
                 </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Login</button>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Log in</button>
             </form>
 
-            <p style="text-align: center; margin-top: 20px; color: #666;">
-                Don't have an account? <a href="/signup" style="color: #667eea;">Sign up here</a>
+            <p style="text-align:center;margin-top:16px;font-size:14px;color:#666;">
+                No account? <a href="/signup">Sign up</a>
             </p>
         </div>
     </div>
 
     <script src="/static/js/main.js"></script>
     <script>
-        async function handleLogin(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            const formData = {
-                email: form.email.value,
-                password: form.password.value,
-                remember: form.remember.checked
-            };
-
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(formData)
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showAlert('Login successful! Redirecting...', 'success');
-                    const params = new URLSearchParams(window.location.search);
-                    const next = params.get('next');
-                    setTimeout(() => {
-                        window.location.href = next || '/dashboard';
-                    }, 1500);
+        function handleLogin(e) {
+            e.preventDefault();
+            fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value,
+                    remember: document.getElementById('remember').checked
+                })
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (r) {
+                if (r.ok) {
+                    var next = new URLSearchParams(window.location.search).get('next');
+                    window.location.href = next || '/dashboard';
                 } else {
-                    showAlert(data.error || 'Login failed. Please check your credentials.', 'error');
+                    showAlert(r.d.error || 'Login failed', 'error');
                 }
-            } catch (error) {
-                console.error('Login error:', error);
-                showAlert('An error occurred. Please try again.', 'error');
-            }
+            })
+            .catch(function () { showAlert('Something went wrong', 'error'); });
         }
     </script>
 </body>

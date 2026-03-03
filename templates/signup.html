@@ -3,88 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Up - ChatNest</title>
+    <title>Sign up - ChatNest</title>
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="logo">💬 ChatNest</a>
+        <div class="nav-inner">
+            <a href="/" class="logo">ChatNest</a>
             <div class="nav-links">
-                <a href="/login">Login</a>
+                <a href="/login">Log in</a>
             </div>
         </div>
     </nav>
 
-    <div class="container">
-        <div class="card" style="max-width: 500px; margin: 40px auto;">
-            <h2 style="margin-bottom: 30px; text-align: center;">Create Your Account</h2>
-            
+    <div class="wrap">
+        <div class="card" style="max-width: 420px; margin: 24px auto;">
+            <h2 style="margin-bottom: 20px;">Sign up</h2>
             <div id="alert-container"></div>
 
             <form id="signup-form" onsubmit="handleSignup(event)">
                 <div class="form-group">
                     <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required minlength="3">
+                    <input type="text" id="username" required minlength="3">
                 </div>
-
                 <div class="form-group">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" required>
+                    <input type="email" id="email" required>
                 </div>
-
                 <div class="form-group">
                     <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required minlength="6">
+                    <input type="password" id="password" required minlength="6">
                 </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Sign Up</button>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Create account</button>
             </form>
 
-            <p style="text-align: center; margin-top: 20px; color: #666;">
-                Already have an account? <a href="/login" style="color: #667eea;">Login here</a>
+            <p style="text-align:center;margin-top:16px;font-size:14px;color:#666;">
+                Already have an account? <a href="/login">Log in</a>
             </p>
         </div>
     </div>
 
     <script src="/static/js/main.js"></script>
     <script>
-        async function handleSignup(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            const formData = {
-                username: form.username.value,
-                email: form.email.value,
-                password: form.password.value
-            };
-
-            try {
-                const response = await fetch('/api/auth/signup', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(formData)
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showAlert('Account created successfully! Redirecting...', 'success');
-                    const params = new URLSearchParams(window.location.search);
-                    const next = params.get('next');
-                    setTimeout(() => {
-                        window.location.href = next || '/dashboard';
-                    }, 1500);
+        function handleSignup(e) {
+            e.preventDefault();
+            fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    username: document.getElementById('username').value,
+                    email: document.getElementById('email').value,
+                    password: document.getElementById('password').value
+                })
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (r) {
+                if (r.ok) {
+                    var next = new URLSearchParams(window.location.search).get('next');
+                    window.location.href = next || '/dashboard';
                 } else {
-                    showAlert(data.error || 'Signup failed. Please try again.', 'error');
+                    showAlert(r.d.error || 'Signup failed', 'error');
                 }
-            } catch (error) {
-                console.error('Signup error:', error);
-                showAlert('An error occurred. Please try again.', 'error');
-            }
+            })
+            .catch(function () { showAlert('Something went wrong', 'error'); });
         }
     </script>
 </body>

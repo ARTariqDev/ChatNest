@@ -4,79 +4,55 @@ from models.user import User
 
 auth_bp = Blueprint('auth', __name__)
 
+
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
-    """User signup endpoint"""
     data = request.get_json()
-    
-    # Validate required fields
+
     if not data or not data.get('username') or not data.get('email') or not data.get('password'):
-        return jsonify({'error': 'Missing required fields'}), 400
-    
-    # Check if user already exists
+        return jsonify({'error': 'All fields are required'}), 400
+
     if User.get_by_email(data['email']):
         return jsonify({'error': 'Email already registered'}), 400
-    
+
     if User.get_by_username(data['username']):
-        return jsonify({'error': 'Username already taken'}), 400
-    
-    # Create new user
-    user = User.create(
-        username=data['username'],
-        email=data['email'],
-        password=data['password']
-    )
-    
-    # Log in the user
+        return jsonify({'error': 'Username taken'}), 400
+
+    user = User.create(data['username'], data['email'], data['password'])
     login_user(user)
-    
-    return jsonify({
-        'message': 'User created successfully',
-        'user': user.to_dict()
-    }), 201
+    return jsonify({'user': user.to_dict()}), 201
+
 
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    """User login endpoint"""
     data = request.get_json()
-    
+
     if not data or not data.get('email') or not data.get('password'):
-        return jsonify({'error': 'Missing email or password'}), 400
-    
-    # Get user by email
+        return jsonify({'error': 'Email and password required'}), 400
+
     user = User.get_by_email(data['email'])
-    
     if not user or not user.check_password(data['password']):
         return jsonify({'error': 'Invalid email or password'}), 401
-    
-    # Log in the user
+
     login_user(user, remember=data.get('remember', False))
-    
-    return jsonify({
-        'message': 'Logged in successfully',
-        'user': user.to_dict()
-    }), 200
+    return jsonify({'user': user.to_dict()}), 200
+
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
-    """User logout endpoint"""
     logout_user()
-    return jsonify({'message': 'Logged out successfully'}), 200
+    return jsonify({'ok': True}), 200
 
-@auth_bp.route('/me', methods=['GET'])
+
+@auth_bp.route('/me')
 @login_required
-def get_current_user():
-    """Get current user information"""
+def me():
     return jsonify({'user': current_user.to_dict()}), 200
 
-@auth_bp.route('/check', methods=['GET'])
-def check_auth():
-    """Check if user is authenticated"""
+
+@auth_bp.route('/check')
+def check():
     if current_user.is_authenticated:
-        return jsonify({
-            'authenticated': True,
-            'user': current_user.to_dict()
-        }), 200
-    else:
-        return jsonify({'authenticated': False}), 200
+        return jsonify({'authenticated': True, 'user': current_user.to_dict()})
+    return jsonify({'authenticated': False})

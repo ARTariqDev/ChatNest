@@ -1,260 +1,88 @@
-# ChatNest - Embeddable Comment System
+# ChatNest
 
-A lightweight, Disqus-like commenting system built with Flask and MongoDB. Easily embeddable via iframe.
+Embeddable comment system. Like Disqus but self-hosted with Flask and MongoDB.
 
-## Features
+Users create a "chat" (a comment forum), then embed it on any page via an iframe.
+Each page gets its own thread using a page ID.
 
-- 🔐 User authentication (signup/login)
-- 💬 Nested comments and replies
-- 🎨 Lightweight and embeddable
-- 🔄 Real-time comment loading
-- 📱 Responsive design
-- 🚀 Deployable on Vercel
-- 💾 MongoDB for data storage
+## Setup
 
-## Architecture
+Needs Python 3.11+ and a MongoDB instance (local or Atlas).
 
 ```
-chatnest/chat="my-chat"/[page_id]
-
-Example:
-- Create a "youtube" chat collection
-- Each video gets its own page_id (e.g., video-123)
-- Access: /embed/youtube/video-123
-```
-
-## Project Structure
-
-```
-chatnest/
-├── app.py                  # Main Flask application
-├── requirements.txt        # Python dependencies
-├── .env.example           # Environment variables template
-├── vercel.json            # Vercel deployment config
-├── models/
-│   ├── user.py           # User model
-│   ├── chat.py           # Chat/Forum model
-│   └── comment.py        # Comment model
-├── routes/
-│   ├── auth.py           # Authentication routes
-│   ├── chat.py           # Chat management routes
-│   └── comment.py        # Comment CRUD routes
-└── templates/
-    └── embed.html        # Embeddable iframe template
-```
-
-## Setup Instructions
-
-### 1. Prerequisites
-
-- Python 3.11+
-- MongoDB (local or MongoDB Atlas)
-- pip package manager
-
-### 2. Environment Setup
-
-Create a `.env` file from the example:
-
-```bash
-cp .env.example .env
-```
-
-Edit `.env` with your configuration:
-
-```env
-MONGO_URI=mongodb://localhost:27017/chatnest
-SECRET_KEY=your-very-secret-key-here
-FLASK_ENV=development
-CORS_ORIGINS=http://localhost:3000,http://localhost:5000
-```
-
-### 3. Install Dependencies
-
-```bash
-# Activate virtual environment (already created)
+cp .env.example .env       # edit with your mongo URI and secret key
 source venv/bin/activate
-
-# Install packages
 pip install -r requirements.txt
-```
-
-### 4. Run Development Server
-
-```bash
 python app.py
 ```
 
-The API will be available at `http://localhost:5000`
+Open `http://localhost:5000`.
 
-### 5. Test the API
+## How it works
 
-**Health Check:**
-```bash
-curl http://localhost:5000/api/health
+```
+/embed/{chat_slug}/{page_id}?bg=ffffff&fg=333333&accent=2563eb
 ```
 
-**Create a user:**
-```bash
-curl -X POST http://localhost:5000/api/auth/signup \
-  -H "Content-Type: application/json" \
-  -d '{"username": "john", "email": "john@example.com", "password": "password123"}'
+- `chat_slug` - the forum you created (e.g. "my-blog")
+- `page_id` - a unique ID per page (e.g. "post-42", a video ID, etc.)
+- Color params are optional hex values (no #)
+
+## Project structure
+
+```
+app.py              main flask app
+extensions.py       mongo, login manager, cors setup
+models/
+  user.py           user model (signup, login, password hashing)
+  chat.py           chat/forum model
+  comment.py        comment model (with threading)
+routes/
+  auth.py           signup, login, logout, auth check
+  chat.py           create/list chats
+  comment.py        create/list/edit/delete comments
+templates/
+  embed.html        the embeddable iframe widget
+  index.html        landing page
+  login.html        login form
+  signup.html       signup form
+  dashboard.html    manage your chats
+  chat-detail.html  embed code generator + color picker
 ```
 
-**Create a chat:**
-```bash
-curl -X POST http://localhost:5000/api/chat/create \
-  -H "Content-Type: application/json" \
-  -b cookies.txt \
-  -d '{"name": "My YouTube Videos", "slug": "youtube", "description": "Comments for YouTube videos"}'
+## API
+
+**Auth**
+- `POST /api/auth/signup` - create account
+- `POST /api/auth/login` - log in
+- `POST /api/auth/logout` - log out
+- `GET  /api/auth/check` - check if logged in
+
+**Chats**
+- `POST /api/chat/create` - new chat
+- `GET  /api/chat/<slug>` - get chat
+- `GET  /api/chat/my-chats` - your chats
+
+**Comments**
+- `POST /api/comment/create` - new comment
+- `GET  /api/comment/<slug>/<page_id>` - get comments for a page
+- `PUT  /api/comment/<id>` - edit comment
+- `DELETE /api/comment/<id>` - delete comment
+
+## Deploying to Vercel
+
 ```
-
-## Embedding ChatNest
-
-### Get Embed Code
-
-```bash
-GET /api/chat/<slug>/info
-```
-
-Returns embed code like:
-
-```html
-<iframe 
-  src="http://localhost:5000/embed/youtube/video-123" 
-  width="100%" 
-  height="600px" 
-  frameborder="0"
-  style="border: 1px solid #ddd; border-radius: 4px;">
-</iframe>
-```
-
-### Example Usage
-
-```html
-<!-- On your YouTube video page -->
-<div id="comments">
-  <iframe 
-    src="https://your-chatnest.vercel.app/embed/youtube/video-xyz123" 
-    width="100%" 
-    height="600px">
-  </iframe>
-</div>
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/signup` - Create new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/logout` - Logout user
-- `GET /api/auth/me` - Get current user
-- `GET /api/auth/check` - Check auth status
-
-### Chat Management
-- `POST /api/chat/create` - Create new chat
-- `GET /api/chat/<slug>` - Get chat by slug
-- `GET /api/chat/list` - List all chats
-- `GET /api/chat/my-chats` - Get user's chats
-- `GET /api/chat/<slug>/info` - Get chat info with embed code
-
-### Comments
-- `POST /api/comment/create` - Create comment
-- `GET /api/comment/<chat_slug>/<page_id>` - Get page comments
-- `PUT /api/comment/<comment_id>` - Update comment
-- `DELETE /api/comment/<comment_id>` - Delete comment
-- `GET /api/comment/replies/<parent_id>` - Get replies
-
-## Deployment on Vercel
-
-### 1. Install Vercel CLI
-
-```bash
 npm i -g vercel
-```
-
-### 2. Login to Vercel
-
-```bash
 vercel login
-```
-
-### 3. Deploy
-
-```bash
 vercel --prod
 ```
 
-### 4. Set Environment Variables
-
-In Vercel dashboard, add:
-- `MONGO_URI` - Your MongoDB connection string
-- `SECRET_KEY` - Random secret key
-- `CORS_ORIGINS` - Allowed origins (comma-separated)
-
-### 5. Update Embed URLs
-
-After deployment, update the embed code to use your Vercel URL:
-```
-https://your-app.vercel.app/embed/chat-slug/page-id
-```
-
-## MongoDB Collections
-
-### users
-```json
-{
-  "_id": ObjectId,
-  "username": "string",
-  "email": "string",
-  "password_hash": "string",
-  "created_at": "datetime"
-}
-```
-
-### chats
-```json
-{
-  "_id": ObjectId,
-  "name": "string",
-  "slug": "string",
-  "owner_id": "string",
-  "description": "string",
-  "created_at": "datetime",
-  "settings": {
-    "allow_anonymous": false,
-    "moderation_enabled": false,
-    "require_approval": false
-  }
-}
-```
-
-### comments
-```json
-{
-  "_id": ObjectId,
-  "chat_slug": "string",
-  "page_id": "string",
-  "user_id": "string",
-  "username": "string",
-  "content": "string",
-  "parent_id": "string|null",
-  "created_at": "datetime",
-  "updated_at": "datetime",
-  "likes": 0,
-  "is_approved": true
-}
-```
-
-## Security Notes
-
-- Change `SECRET_KEY` in production
-- Use HTTPS in production
-- Configure CORS properly
-- Use MongoDB Atlas for production database
-- Add rate limiting for API endpoints
-- Implement input validation and sanitization
+Set these env vars in the Vercel dashboard:
+- `MONGO_URI`
+- `SECRET_KEY`
+- `FLASK_ENV=production`
+- `CORS_ORIGINS=https://yourdomain.com`
 
 ## License
 
 MIT
-# ChatNest

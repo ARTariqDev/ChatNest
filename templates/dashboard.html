@@ -8,164 +8,103 @@
 </head>
 <body>
     <nav class="navbar">
-        <div class="nav-container">
-            <a href="/" class="logo">💬 ChatNest</a>
-            <div class="nav-links" id="auth-links">
-                <!-- Populated by JavaScript -->
-            </div>
+        <div class="nav-inner">
+            <a href="/" class="logo">ChatNest</a>
+            <div class="nav-links" id="auth-links"></div>
         </div>
     </nav>
 
-    <div class="container">
+    <div class="wrap">
         <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-                <h2>My Chats</h2>
-                <button onclick="showCreateModal()" class="btn btn-primary">+ Create New Chat</button>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h2>My chats</h2>
+                <button onclick="showModal()" class="btn btn-primary">New chat</button>
             </div>
-
             <div id="chats-container">
-                <div class="loading">Loading your chats...</div>
+                <div class="loading">Loading...</div>
             </div>
         </div>
     </div>
 
-    <!-- Create Chat Modal -->
+    <!-- create modal -->
     <div id="create-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Create New Chat</h2>
-                <button class="close-modal" onclick="closeCreateModal()">&times;</button>
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3>New chat</h3>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
             </div>
-
-            <form id="create-chat-form" onsubmit="handleCreateChat(event)">
+            <form id="create-form" onsubmit="handleCreate(event)">
                 <div class="form-group">
-                    <label for="chat-name">Chat Name</label>
-                    <input type="text" id="chat-name" name="name" required placeholder="e.g., My YouTube Channel">
+                    <label for="chat-name">Name</label>
+                    <input type="text" id="chat-name" required placeholder="My Blog Comments">
                 </div>
-
                 <div class="form-group">
-                    <label for="chat-slug">Slug (URL-friendly identifier)</label>
-                    <input type="text" id="chat-slug" name="slug" placeholder="e.g., youtube (leave empty to auto-generate)">
+                    <label for="chat-slug">Slug</label>
+                    <input type="text" id="chat-slug" placeholder="my-blog (leave blank to auto-generate)">
                 </div>
-
                 <div class="form-group">
-                    <label for="chat-description">Description (optional)</label>
-                    <textarea id="chat-description" name="description" placeholder="What is this chat for?"></textarea>
+                    <label for="chat-desc">Description</label>
+                    <textarea id="chat-desc" placeholder="Optional"></textarea>
                 </div>
-
-                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Chat</button>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Create</button>
             </form>
         </div>
     </div>
 
     <script src="/static/js/main.js"></script>
     <script>
-        // Check if user is logged in
-        async function checkAccess() {
-            const user = await checkAuth();
-            if (!user) {
-                window.location.href = '/login';
-                return false;
-            }
-            return true;
-        }
-
-        // Load user's chats
-        async function loadChats() {
-            try {
-                const response = await fetch('/api/chat/my-chats', {
-                    credentials: 'include'
-                });
-
-                const data = await response.json();
-                const container = document.getElementById('chats-container');
-
-                if (data.chats && data.chats.length > 0) {
-                    container.innerHTML = `
-                        <div class="grid">
-                            ${data.chats.map(chat => `
-                                <div class="chat-card" onclick="viewChat('${chat.slug}')">
-                                    <h3>${chat.name}</h3>
-                                    <p>${chat.description || 'No description'}</p>
-                                    <span class="chat-slug">${chat.slug}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                } else {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <h3>No chats yet</h3>
-                            <p>Create your first chat to get started!</p>
-                        </div>
-                    `;
-                }
-            } catch (error) {
-                console.error('Failed to load chats:', error);
-                document.getElementById('chats-container').innerHTML = `
-                    <div class="alert alert-error">Failed to load chats. Please refresh the page.</div>
-                `;
-            }
-        }
-
-        // Show create modal
-        function showCreateModal() {
-            document.getElementById('create-modal').classList.add('active');
-        }
-
-        // Close create modal
-        function closeCreateModal() {
-            document.getElementById('create-modal').classList.remove('active');
-            document.getElementById('create-chat-form').reset();
-        }
-
-        // Handle create chat
-        async function handleCreateChat(event) {
-            event.preventDefault();
-            
-            const form = event.target;
-            const formData = {
-                name: form.name.value,
-                slug: form.slug.value || undefined,
-                description: form.description.value || undefined
-            };
-
-            try {
-                const response = await fetch('/api/chat/create', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(formData)
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    showAlert('Chat created successfully!', 'success');
-                    closeCreateModal();
-                    loadChats();
-                } else {
-                    showAlert(data.error || 'Failed to create chat', 'error');
-                }
-            } catch (error) {
-                console.error('Create chat error:', error);
-                showAlert('An error occurred. Please try again.', 'error');
-            }
-        }
-
-        // View chat details
-        function viewChat(slug) {
-            window.location.href = `/chat/${slug}`;
-        }
-
-        // Initialize
-        checkAccess().then(hasAccess => {
-            if (hasAccess) {
-                loadChats();
-            }
+        // make sure user is logged in
+        checkAuth().then(function (user) {
+            if (!user) window.location.href = '/login';
+            else loadChats();
         });
+
+        function loadChats() {
+            fetch('/api/chat/my-chats', { credentials: 'include' })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    var el = document.getElementById('chats-container');
+                    if (!data.chats || data.chats.length === 0) {
+                        el.innerHTML = '<div class="empty"><p>No chats yet. Create one to get started.</p></div>';
+                        return;
+                    }
+                    el.innerHTML = '<div class="grid">' +
+                        data.chats.map(function (c) {
+                            return '<div class="chat-card" onclick="location.href=\'/chat/' + c.slug + '\'">' +
+                                '<h3>' + c.name + '</h3>' +
+                                '<p>' + (c.description || 'No description') + '</p>' +
+                                '<span class="chat-slug">' + c.slug + '</span>' +
+                                '</div>';
+                        }).join('') +
+                        '</div>';
+                });
+        }
+
+        function showModal() { document.getElementById('create-modal').classList.add('active'); }
+        function hideModal() {
+            document.getElementById('create-modal').classList.remove('active');
+            document.getElementById('create-form').reset();
+        }
+
+        function handleCreate(e) {
+            e.preventDefault();
+            var body = {
+                name: document.getElementById('chat-name').value,
+                slug: document.getElementById('chat-slug').value || undefined,
+                description: document.getElementById('chat-desc').value || undefined,
+            };
+            fetch('/api/chat/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(body),
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (r) {
+                if (r.ok) { hideModal(); loadChats(); }
+                else showAlert(r.d.error || 'Failed', 'error');
+            });
+        }
     </script>
 </body>
 </html>

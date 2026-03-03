@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ChatNest</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">💬 ChatNest</a>
+            <div class="nav-links" id="auth-links">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                <h2>My Chats</h2>
+                <button onclick="showCreateModal()" class="btn btn-primary">+ Create New Chat</button>
+            </div>
+
+            <div id="chats-container">
+                <div class="loading">Loading your chats...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Chat Modal -->
+    <div id="create-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Create New Chat</h2>
+                <button class="close-modal" onclick="closeCreateModal()">&times;</button>
+            </div>
+
+            <form id="create-chat-form" onsubmit="handleCreateChat(event)">
+                <div class="form-group">
+                    <label for="chat-name">Chat Name</label>
+                    <input type="text" id="chat-name" name="name" required placeholder="e.g., My YouTube Channel">
+                </div>
+
+                <div class="form-group">
+                    <label for="chat-slug">Slug (URL-friendly identifier)</label>
+                    <input type="text" id="chat-slug" name="slug" placeholder="e.g., youtube (leave empty to auto-generate)">
+                </div>
+
+                <div class="form-group">
+                    <label for="chat-description">Description (optional)</label>
+                    <textarea id="chat-description" name="description" placeholder="What is this chat for?"></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">Create Chat</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script>
+        // Check if user is logged in
+        async function checkAccess() {
+            const user = await checkAuth();
+            if (!user) {
+                window.location.href = '/login';
+                return false;
+            }
+            return true;
+        }
+
+        // Load user's chats
+        async function loadChats() {
+            try {
+                const response = await fetch('/api/chat/my-chats', {
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                const container = document.getElementById('chats-container');
+
+                if (data.chats && data.chats.length > 0) {
+                    container.innerHTML = `
+                        <div class="grid">
+                            ${data.chats.map(chat => `
+                                <div class="chat-card" onclick="viewChat('${chat.slug}')">
+                                    <h3>${chat.name}</h3>
+                                    <p>${chat.description || 'No description'}</p>
+                                    <span class="chat-slug">${chat.slug}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <h3>No chats yet</h3>
+                            <p>Create your first chat to get started!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load chats:', error);
+                document.getElementById('chats-container').innerHTML = `
+                    <div class="alert alert-error">Failed to load chats. Please refresh the page.</div>
+                `;
+            }
+        }
+
+        // Show create modal
+        function showCreateModal() {
+            document.getElementById('create-modal').classList.add('active');
+        }
+
+        // Close create modal
+        function closeCreateModal() {
+            document.getElementById('create-modal').classList.remove('active');
+            document.getElementById('create-chat-form').reset();
+        }
+
+        // Handle create chat
+        async function handleCreateChat(event) {
+            event.preventDefault();
+            
+            const form = event.target;
+            const formData = {
+                name: form.name.value,
+                slug: form.slug.value || undefined,
+                description: form.description.value || undefined
+            };
+
+            try {
+                const response = await fetch('/api/chat/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify(formData)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showAlert('Chat created successfully!', 'success');
+                    closeCreateModal();
+                    loadChats();
+                } else {
+                    showAlert(data.error || 'Failed to create chat', 'error');
+                }
+            } catch (error) {
+                console.error('Create chat error:', error);
+                showAlert('An error occurred. Please try again.', 'error');
+            }
+        }
+
+        // View chat details
+        function viewChat(slug) {
+            window.location.href = `/chat/${slug}`;
+        }
+
+        // Initialize
+        checkAccess().then(hasAccess => {
+            if (hasAccess) {
+                loadChats();
+            }
+        });
+    </script>
+</body>
+</html>

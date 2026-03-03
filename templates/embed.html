@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatNest - {{ chat_slug }}</title>
+    <style>
+        :root {
+            --bg: #ffffff;
+            --fg: #333333;
+            --accent: #007bff;
+            --comment-bg: #f8f9fa;
+            --border: #e0e0e0;
+            --muted: #999999;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--fg);
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--border);
+        }
+        .header h2 { color: var(--fg); }
+        .login-prompt {
+            background: var(--comment-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            color: var(--fg);
+        }
+        .login-prompt a { color: var(--accent); }
+        .comment-form { margin-bottom: 30px; }
+        .comment-form textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 100px;
+            font-family: inherit;
+            background: var(--bg);
+            color: var(--fg);
+        }
+        .comment-form textarea:focus { outline: none; border-color: var(--accent); }
+        .comment-form button {
+            background: var(--accent);
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .comment-form button:hover { filter: brightness(0.9); }
+        .comment {
+            background: var(--comment-bg);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--accent);
+        }
+        .comment.reply {
+            margin-left: 30px;
+            border-left-color: var(--muted);
+        }
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .comment-author { font-weight: 600; color: var(--accent); }
+        .comment-content { line-height: 1.6; margin-bottom: 10px; color: var(--fg); }
+        .comment-actions { font-size: 13px; }
+        .comment-actions button {
+            background: none;
+            border: none;
+            color: var(--accent);
+            cursor: pointer;
+            margin-right: 10px;
+            padding: 0;
+        }
+        .comment-actions button:hover { text-decoration: underline; }
+        .powered-by {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: var(--muted);
+        }
+        .powered-by a { color: var(--accent); text-decoration: none; }
+        .loading { text-align: center; padding: 20px; color: var(--muted); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h2>Comments</h2></div>
+        <div id="auth-section"></div>
+        <div id="comment-form"></div>
+        <div id="comments-list"></div>
+        <div class="powered-by">
+            Powered by <a href="/" target="_blank">ChatNest</a>
+        </div>
+    </div>
+    <script>
+        // Apply colour theme from URL params: ?bg=rrggbb&fg=rrggbb&accent=rrggbb
+        (function () {
+            var p = new URLSearchParams(window.location.search);
+            var r = document.documentElement.style;
+            if (p.get('bg'))     { r.setProperty('--bg',         '#' + p.get('bg')); r.setProperty('--comment-bg', '#' + p.get('bg')); }
+            if (p.get('fg'))     { r.setProperty('--fg',         '#' + p.get('fg')); }
+            if (p.get('accent')) { r.setProperty('--accent',     '#' + p.get('accent')); }
+        })();
+
+        var API_BASE   = window.location.origin + '/api';
+        var CHAT_SLUG  = '{{ chat_slug }}';
+        var PAGE_ID    = '{{ page_id }}';
+        var currentUser = null;
+
+        // ── Auth ──────────────────────────────────────────────────────────────
+        function checkAuth() {
+            return fetch(API_BASE + '/auth/check', { credentials: 'include' })
+                .then(function (res) { return res.json(); })
+                .then(function (d) {
+                    currentUser = d.authenticated ? d.user : null;
+                    renderAuthSection();
+                    renderCommentForm();
+                })
+                .catch(function () {
+                    currentUser = null;
+                    renderAuthSection();
+                    renderCommentForm();
+                });
+        }
+
+        function renderAuthSection() {
+            var el = document.getElementById('auth-section');
+            var returnUrl = encodeURIComponent(window.location.href);
+            if (!currentUser) {
+                el.innerHTML =
+                    '<div class="login-prompt">' +
+                    '<a href="/login?next=' + returnUrl + '" target="_blank" onclick="waitForLogin()">Login</a>' +
+                    ' or ' +
+                    '<a href="/signup?next=' + returnUrl + '" target="_blank" onclick="waitForLogin()">Sign up</a>' +
+                    ' to comment</div>';
+            } else {
+                el.innerHTML =
+                    '<div class="login-prompt" style="text-align:left;background:transparent;border:1px solid var(--border)">' +
+                    'Logged in as <strong>' + escapeHtml(currentUser.username) + '</strong>' +
+                    '</div>';
+            }
+        }
+
+        function waitForLogin() {
+            setTimeout(function () {
+                document.getElementById('auth-section').innerHTML =
+                    '<div class="login-prompt">After logging in, ' +
+                    '<button onclick="checkAuth().then(loadComments)" ' +
+                    'style="background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;">' +
+                    'Click here to refresh</button></div>';
+            }, 500);
+        }
+
+        function renderCommentForm() {
+            var el = document.getElementById('comment-form');
+            if (currentUser) {
+                el.innerHTML =
+                    '<div class="comment-form">' +
+                    '<textarea id="comment-input" placeholder="Write a comment..."></textarea>' +
+                    '<button onclick="submitComment()">Post Comment</button>' +
+                    '</div>';
+            } else {
+                el.innerHTML = '';
+            }
+        }
+
+        // ── Comments ──────────────────────────────────────────────────────────
+        function submitComment() {
+            var input   = document.getElementById('comment-input');
+            var content = input ? input.value.trim() : '';
+            if (!content) return;
+            fetch(API_BASE + '/comment/create', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_slug: CHAT_SLUG, page_id: PAGE_ID, content: content, parent_id: null })
+            })
+            .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+            .then(function (r) {
+                if (r.ok) { input.value = ''; loadComments(); }
+                else alert(r.d.error || 'Failed to post comment');
+            })
+            .catch(function () { alert('Failed to post comment. Please try again.'); });
+        }
+
+        function loadComments() {
+            var el = document.getElementById('comments-list');
+            el.innerHTML = '<div class="loading">Loading comments...</div>';
+            fetch(API_BASE + '/comment/' + CHAT_SLUG + '/' + PAGE_ID, { credentials: 'include' })
+            .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, d: d }; }); })
+            .then(function (r) {
+                if (!r.ok) { el.innerHTML = '<div class="loading">' + escapeHtml(r.d.error || 'Failed to load') + '</div>'; return; }
+                var comments = r.d.comments;
+                el.innerHTML = (comments && comments.length > 0)
+                    ? comments.map(function (c) { return renderComment(c, false); }).join('')
+                    : '<div class="loading">No comments yet. Be the first!</div>';
+            })
+            .catch(function () { el.innerHTML = '<div class="loading">Failed to load comments.</div>'; });
+        }
+
+        function renderComment(comment, isReply) {
+            var date    = new Date(comment.created_at).toLocaleDateString();
+            var replies = comment.replies
+                ? comment.replies.map(function (r) { return renderComment(r, true); }).join('')
+                : '';
+            var replyBtn = currentUser
+                ? '<button onclick="replyTo(\'' + comment.id + '\',\'' + escapeAttr(comment.username) + '\')">Reply</button>'
+                : '';
+            return '<div class="comment' + (isReply ? ' reply' : '') + '">' +
+                '<div class="comment-header">' +
+                    '<span class="comment-author">' + escapeHtml(comment.username) + '</span>' +
+                    '<span>' + date + '</span>' +
+                '</div>' +
+                '<div class="comment-content">' + escapeHtml(comment.content) + '</div>' +
+                '<div class="comment-actions">' + replyBtn + '</div>' +
+                replies +
+                '</div>';
+        }
+
+        function replyTo(parentId, username) {
+            var existing = document.getElementById('reply-form-' + parentId);
+            if (existing) { existing.remove(); return; }
+            var div = document.createElement('div');
+            div.id = 'reply-form-' + parentId;
+            div.className = 'comment reply';
+            div.style.marginTop = '10px';
+            div.innerHTML =
+                '<textarea id="reply-input-' + parentId + '" placeholder="Reply to ' + escapeAttr(username) + '..." ' +
+                'style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--fg);font-family:inherit;resize:vertical;min-height:70px;"></textarea>' +
+                '<button onclick="submitReply(\'' + parentId + '\')" ' +
+                'style="background:var(--accent);color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;margin-top:8px;">Post Reply</button>';
+            var commentEl = document.querySelector('[data-id="' + parentId + '"]') || document.getElementById('comments-list');
+            commentEl.parentNode ? commentEl.after(div) : document.getElementById('comments-list').appendChild(div);
+        }
+
+        function submitReply(parentId) {
+            var input = document.getElementById('reply-input-' + parentId);
+            if (!input) return;
+            var content = input.value.trim();
+            if (!content) return;
+            fetch(API_BASE + '/comment/create', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chat_slug: CHAT_SLUG, page_id: PAGE_ID, content: content, parent_id: parentId })
+            })
+            .then(function (res) {
+                if (res.ok) loadComments();
+                else res.json().then(function (d) { alert(d.error || 'Failed to post reply'); });
+            })
+            .catch(function () { alert('Failed to post reply. Please try again.'); });
+        }
+
+        // ── Utilities ─────────────────────────────────────────────────────────
+        function escapeHtml(text) {
+            var d = document.createElement('div');
+            d.textContent = String(text);
+            return d.innerHTML;
+        }
+
+        function escapeAttr(text) {
+            return String(text).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+        }
+
+        // ── Init ──────────────────────────────────────────────────────────────
+        checkAuth().then(loadComments);
+        setInterval(loadComments, 30000);
+    </script>
+</body>
+</html>

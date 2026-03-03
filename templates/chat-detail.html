@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Details - ChatNest</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .color-item label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .color-row input[type=color] {
+            width: 44px;
+            height: 44px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 2px;
+            cursor: pointer;
+            background: none;
+        }
+        .color-row input[type=text] {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .color-row input[type=text]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .preset-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        .preset-btn {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.2s;
+            background: white;
+        }
+        .preset-btn:hover { border-color: #667eea; color: #667eea; }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="logo">💬 ChatNest</a>
+            <div class="nav-links" id="auth-links"></div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div style="margin-bottom: 20px;">
+            <a href="/dashboard" style="color: #667eea; text-decoration: none;">← Back to Dashboard</a>
+        </div>
+
+        <div id="chat-info" class="card">
+            <div class="loading">Loading chat details...</div>
+        </div>
+
+        <div class="card">
+            <h2>🎨 Customize &amp; Get Embed Code</h2>
+            <p style="color:#666; margin-bottom:20px;">Configure your embed widget, then copy the generated iframe code.</p>
+
+            <!-- Page ID -->
+            <div class="form-group">
+                <label for="page-id-input">Page ID</label>
+                <input type="text" id="page-id-input" placeholder="e.g., video-123, article-456" value="page-example" oninput="updateEmbedCode()">
+                <small style="color:#666;">Unique ID per page — e.g. a YouTube video ID or article slug</small>
+            </div>
+
+            <!-- Color Presets -->
+            <div style="margin-bottom: 15px;">
+                <label style="display:block; font-weight:600; margin-bottom:10px;">Presets</label>
+                <div class="preset-row">
+                    <button class="preset-btn" onclick="applyPreset('#ffffff','#333333','#007bff')">☀️ Light</button>
+                    <button class="preset-btn" onclick="applyPreset('#1a1a2e','#e0e0e0','#7c6af7')">🌙 Dark</button>
+                    <button class="preset-btn" onclick="applyPreset('#0f0f0f','#ffffff','#ff0000')">▶️ YouTube</button>
+                    <button class="preset-btn" onclick="applyPreset('#fafafa','#111111','#1db954')">🎵 Spotify</button>
+                    <button class="preset-btn" onclick="applyPreset('#fff8f0','#2d2d2d','#e8612c')">🔥 Warm</button>
+                    <button class="preset-btn" onclick="applyPreset('#f0f7ff','#1a2a3a','#0066cc')">🌊 Ocean</button>
+                </div>
+            </div>
+
+            <!-- Color Pickers -->
+            <div class="color-grid">
+                <div class="color-item">
+                    <label>Background Color</label>
+                    <div class="color-row">
+                        <input type="color" id="color-bg" value="#ffffff" oninput="syncHex('bg'); updateEmbedCode()">
+                        <input type="text" id="hex-bg" value="#ffffff" maxlength="7" oninput="syncPicker('bg'); updateEmbedCode()">
+                    </div>
+                </div>
+                <div class="color-item">
+                    <label>Font Color</label>
+                    <div class="color-row">
+                        <input type="color" id="color-fg" value="#333333" oninput="syncHex('fg'); updateEmbedCode()">
+                        <input type="text" id="hex-fg" value="#333333" maxlength="7" oninput="syncPicker('fg'); updateEmbedCode()">
+                    </div>
+                </div>
+                <div class="color-item">
+                    <label>Accent Color</label>
+                    <div class="color-row">
+                        <input type="color" id="color-accent" value="#007bff" oninput="syncHex('accent'); updateEmbedCode()">
+                        <input type="text" id="hex-accent" value="#007bff" maxlength="7" oninput="syncPicker('accent'); updateEmbedCode()">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Generated Embed Code -->
+            <h3 style="margin-top:10px; margin-bottom:10px;">Embed Code</h3>
+            <div class="code-block">
+                <button class="copy-btn" onclick="copyEmbed()">Copy</button>
+                <pre id="embed-code-content"></pre>
+            </div>
+
+            <!-- Live Preview -->
+            <h3 style="margin-top:30px; margin-bottom:10px;">Live Preview</h3>
+            <p style="color:#666; margin-bottom:15px;">Updates as you change colors above.</p>
+            <div style="border: 2px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+                <iframe id="preview-iframe" width="100%" height="500px" frameborder="0" style="display:block;"></iframe>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>API Endpoints</h2>
+            <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin-bottom:10px;">
+                <strong>Get Comments:</strong><br>
+                <code style="font-family:monospace;font-size:13px;" id="api-get-comments"></code>
+            </div>
+            <div style="background:#f8f9fa;padding:15px;border-radius:8px;">
+                <strong>Create Comment:</strong><br>
+                <code style="font-family:monospace;font-size:13px;" id="api-create-comment"></code>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+    <script>
+        const chatSlug = window.location.pathname.split('/').pop();
+        let chatData = null;
+
+        async function loadChatDetails() {
+            try {
+                const response = await fetch(`/api/chat/${chatSlug}`);
+                const data = await response.json();
+                if (response.ok) {
+                    chatData = data.chat;
+                    displayChatInfo();
+                    updateEmbedCode();
+                } else {
+                    document.getElementById('chat-info').innerHTML = '<div class="alert alert-error">Chat not found</div>';
+                }
+            } catch {
+                document.getElementById('chat-info').innerHTML = '<div class="alert alert-error">Failed to load chat details</div>';
+            }
+        }
+
+        function displayChatInfo() {
+            document.getElementById('chat-info').innerHTML = `
+                <h1>${chatData.name}</h1>
+                <p style="color:#666;margin:10px 0;">${chatData.description || 'No description'}</p>
+                <span class="chat-slug">${chatData.slug}</span>
+            `;
+        }
+
+        // Sync color picker → hex input
+        function syncHex(key) {
+            const val = document.getElementById('color-' + key).value;
+            document.getElementById('hex-' + key).value = val;
+        }
+
+        // Sync hex input → color picker
+        function syncPicker(key) {
+            const val = document.getElementById('hex-' + key).value;
+            if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+                document.getElementById('color-' + key).value = val;
+            }
+        }
+
+        // Apply a color preset
+        function applyPreset(bg, fg, accent) {
+            document.getElementById('color-bg').value = bg;
+            document.getElementById('hex-bg').value = bg;
+            document.getElementById('color-fg').value = fg;
+            document.getElementById('hex-fg').value = fg;
+            document.getElementById('color-accent').value = accent;
+            document.getElementById('hex-accent').value = accent;
+            updateEmbedCode();
+        }
+
+        function updateEmbedCode() {
+            if (!chatData) return;
+
+            const pageId  = document.getElementById('page-id-input').value || 'page-example';
+            const bg      = document.getElementById('hex-bg').value.replace('#', '');
+            const fg      = document.getElementById('hex-fg').value.replace('#', '');
+            const accent  = document.getElementById('hex-accent').value.replace('#', '');
+            const baseUrl = window.location.origin;
+
+            const embedSrc = `${baseUrl}/embed/${chatData.slug}/${pageId}?bg=${bg}&fg=${fg}&accent=${accent}`;
+
+            const embedCode = `<iframe\n  src="${embedSrc}"\n  width="100%"\n  height="600px"\n  frameborder="0"\n  style="border:1px solid #ddd;border-radius:4px;">\n</iframe>`;
+
+            document.getElementById('embed-code-content').textContent = embedCode;
+            document.getElementById('preview-iframe').src = embedSrc;
+            document.getElementById('api-get-comments').textContent = `GET ${baseUrl}/api/comment/${chatData.slug}/${pageId}`;
+            document.getElementById('api-create-comment').textContent = `POST ${baseUrl}/api/comment/create`;
+        }
+
+        function copyEmbed() {
+            const code = document.getElementById('embed-code-content').textContent;
+            copyToClipboard(code, document.querySelector('.copy-btn'));
+        }
+
+        loadChatDetails();
+    </script>
+</body>
+</html>

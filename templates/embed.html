@@ -5,196 +5,239 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ChatNest - {{ chat_slug }}</title>
     <style>
-        :root {
-            --bg: #fff;
-            --fg: #222;
-            --accent: #2563eb;
-            --comment-bg: #f5f5f5;
-            --border: #ddd;
-            --muted: #888;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg); color: var(--fg); padding: 16px;
-        }
-        .wrap { max-width: 720px; margin: 0 auto; }
-        .header { margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-        .header h2 { font-size: 18px; }
-        .notice {
-            background: var(--comment-bg); padding: 12px;
-            border-radius: 4px; margin-bottom: 16px;
-            text-align: center; font-size: 14px;
-        }
-        .notice a { color: var(--accent); }
-        .comment-form { margin-bottom: 24px; }
-        .comment-form textarea {
-            width: 100%; padding: 10px; font-size: 14px;
-            border: 1px solid var(--border); border-radius: 4px;
-            font-family: inherit; resize: vertical; min-height: 80px;
-            background: var(--bg); color: var(--fg);
-        }
-        .comment-form textarea:focus { outline: none; border-color: var(--accent); }
-        .comment-form button,
-        .reply-btn {
-            background: var(--accent); color: #fff;
-            padding: 6px 14px; border: none; border-radius: 4px;
-            cursor: pointer; font-size: 13px; margin-top: 6px;
-        }
-        .comment {
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border);
-        }
-        .comment:last-child { border-bottom: none; }
-        .comment.reply { margin-left: 20px; padding-left: 12px; border-bottom: none; border-left: 1px solid var(--border); }
-        .c-head { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-        .c-author { font-weight: 600; color: var(--fg); }
-        .c-body { font-size: 14px; line-height: 1.5; margin-bottom: 4px; }
-        .c-actions button {
-            background: none; border: none; color: var(--muted);
-            cursor: pointer; font-size: 12px; padding: 0;
-        }
-        .c-actions button:hover { color: var(--fg); }
-        .footer { text-align: center; margin-top: 24px; font-size: 11px; color: var(--muted); }
-        .footer a { color: var(--accent); text-decoration: none; }
-        .empty { text-align: center; padding: 20px; color: var(--muted); font-size: 14px; }
+    :root { --bg:#fff; --fg:#222; --accent:#2563eb; --border:#ddd; --muted:#888; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--fg); padding:16px; }
+    .wrap { max-width:720px; margin:0 auto; }
+    .header { margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+    .header h2 { font-size:18px; }
+    .notice { background:var(--bg); border:1px solid var(--border); padding:12px; border-radius:4px; margin-bottom:16px; text-align:center; font-size:14px; }
+    .notice a { color:var(--accent); }
+    .comment-form { margin-bottom:24px; }
+    .comment-form textarea { width:100%; padding:10px; font-size:14px; border:1px solid var(--border); border-radius:4px; font-family:inherit; resize:vertical; min-height:80px; background:var(--bg); color:var(--fg); }
+    .comment-form textarea:focus { outline:none; border-color:var(--accent); }
+    .comment-form button, .reply-btn { background:var(--accent); color:#fff; padding:6px 14px; border:none; border-radius:4px; cursor:pointer; font-size:13px; margin-top:6px; }
+    .comment { padding:10px 0; border-bottom:1px solid var(--border); }
+    .comment:last-child { border-bottom:none; }
+    .comment.reply { margin-left:20px; padding-left:12px; border-bottom:none; border-left:1px solid var(--border); }
+    .c-head { display:flex; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:4px; }
+    .c-author { font-weight:600; color:var(--fg); }
+    .c-body { font-size:14px; line-height:1.5; margin-bottom:4px; }
+    .c-actions { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .c-actions button { background:none; border:none; color:var(--muted); cursor:pointer; font-size:13px; padding:6px 4px; min-height:32px; min-width:32px; }
+    .c-actions button:hover { color:var(--fg); }
+    .c-actions button.liked { color:#e0245e; }
+    .replies { margin-top:0; }
+    .replies.collapsed { display:none; }
+    .toggle-replies { background:none; border:none; color:var(--muted); cursor:pointer; font-size:12px; padding:4px 0; margin-top:2px; }
+    .toggle-replies:hover { color:var(--fg); }
+    .footer { text-align:center; margin-top:24px; font-size:11px; color:var(--muted); }
+    .footer a { color:var(--accent); text-decoration:none; }
+    .empty { text-align:center; padding:20px; color:var(--muted); font-size:14px; }
     </style>
 </head>
 <body>
     <div class="wrap">
         <div class="header"><h2>Comments</h2></div>
-        <div id="auth-section"></div>
-        <div id="comment-form"></div>
-        <div id="comments-list"></div>
+        <div id="auth"></div>
+        <div id="form"></div>
+        <div id="comments"></div>
         <div class="footer">Powered by <a href="/" target="_blank">ChatNest</a></div>
     </div>
     <script>
-        // read color params from url
-        (function () {
-            var p = new URLSearchParams(window.location.search);
-            var s = document.documentElement.style;
-            if (p.get('bg'))     { s.setProperty('--bg', '#' + p.get('bg')); s.setProperty('--comment-bg', '#' + p.get('bg')); }
-            if (p.get('fg'))       s.setProperty('--fg', '#' + p.get('fg'));
-            if (p.get('accent'))   s.setProperty('--accent', '#' + p.get('accent'));
-        })();
+        // used a bunch of js here cuz this is intended to be  embedded on external sites and flask wasn't allowing for that (afaik)
+    (function() {
+        var params = new URLSearchParams(location.search);
+        var root = document.documentElement.style;
+        if (params.get('bg'))     root.setProperty('--bg', '#' + params.get('bg'));
+        if (params.get('fg'))     root.setProperty('--fg', '#' + params.get('fg'));
+        if (params.get('accent')) root.setProperty('--accent', '#' + params.get('accent'));
+    })();
 
-        var API = window.location.origin + '/api';
-        var SLUG = '{{ chat_slug }}';
-        var PAGE = '{{ page_id }}';
-        var user = null;
+    var API = location.origin + '/api';
+    var SLUG = '{{ chat_slug }}';
+    var PAGE = '{{ page_id }}';
+    var user = null;
 
-        function checkAuth() {
-            return fetch(API + '/auth/check', { credentials: 'include' })
-                .then(function (r) { return r.json(); })
-                .then(function (d) { user = d.authenticated ? d.user : null; render(); })
-                .catch(function () { user = null; render(); });
+
+    function init() {
+        fetch(API + '/auth/check', {credentials: 'include'})
+            .then(function(response) { return response.json(); })
+            .then(function(data) { user = data.authenticated ? data.user : null; })
+            .catch(function() { user = null; })
+            .then(function() { renderUI(); loadComments(); });
+    }
+
+
+    function renderUI() {
+        var authBox = document.getElementById('auth');
+        var formBox = document.getElementById('form');
+        var returnUrl = encodeURIComponent(location.href);
+
+        if (!user) {
+            authBox.innerHTML = '<div class="notice"><a href="/login?next=' + returnUrl + '" target="_blank" onclick="waitLogin()">Log in</a> or <a href="/signup?next=' + returnUrl + '" target="_blank" onclick="waitLogin()">sign up</a> to comment</div>';
+            formBox.innerHTML = '';
+        } else {
+            authBox.innerHTML = '<div class="notice" style="text-align:left;display:flex;justify-content:space-between;align-items:center;">Logged in as <strong>' + esc(user.username) + '</strong> <a href="#" onclick="doLogout();return false;" style="font-size:12px;color:var(--muted);">Log out</a></div>';
+            formBox.innerHTML = '<div class="comment-form"><textarea id="input" placeholder="Write a comment..."></textarea><button onclick="post()">Post</button></div>';
         }
+    }
 
-        function render() {
-            renderAuth();
-            renderForm();
-        }
 
-        function renderAuth() {
-            var el = document.getElementById('auth-section');
-            var ret = encodeURIComponent(window.location.href);
-            if (!user) {
-                el.innerHTML = '<div class="notice">' +
-                    '<a href="/login?next=' + ret + '" target="_blank" onclick="waitLogin()">Log in</a>' +
-                    ' or <a href="/signup?next=' + ret + '" target="_blank" onclick="waitLogin()">sign up</a> to comment</div>';
-            } else {
-                el.innerHTML = '<div class="notice" style="text-align:left;background:transparent;border:1px solid var(--border);">' +
-                    'Logged in as <strong>' + esc(user.username) + '</strong></div>';
-            }
-        }
+    function waitLogin() {
+        setTimeout(function() {
+            document.getElementById('auth').innerHTML = '<div class="notice">Logged in? <button onclick="init()" class="reply-btn">Refresh</button></div>';
+        }, 500);
+    }
 
-        function waitLogin() {
-            setTimeout(function () {
-                document.getElementById('auth-section').innerHTML =
-                    '<div class="notice">Logged in? ' +
-                    '<button onclick="checkAuth().then(loadComments)" class="reply-btn">Refresh</button></div>';
-            }, 500);
-        }
 
-        function renderForm() {
-            var el = document.getElementById('comment-form');
-            if (!user) { el.innerHTML = ''; return; }
-            el.innerHTML = '<div class="comment-form">' +
-                '<textarea id="input" placeholder="Write a comment..."></textarea>' +
-                '<button onclick="post()">Post</button></div>';
-        }
+    function post() {
+        var textarea = document.getElementById('input');
+        if (!textarea || !textarea.value.trim()) return;
+        fetch(API + '/comment/create', {
+            method: 'POST', credentials: 'include',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({chat_slug: SLUG, page_id: PAGE, content: textarea.value.trim(), parent_id: null})
+        }).then(function(response) { if (response.ok) { textarea.value = ''; loadComments(); } });
+    }
 
-        function post() {
-            var input = document.getElementById('input');
-            var text = input ? input.value.trim() : '';
-            if (!text) return;
-            fetch(API + '/comment/create', {
-                method: 'POST', credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_slug: SLUG, page_id: PAGE, content: text, parent_id: null })
-            }).then(function (r) {
-                if (r.ok) { input.value = ''; loadComments(); }
-                else r.json().then(function (d) { alert(d.error || 'Error'); });
+
+    function loadComments() {
+        fetch(API + '/comment/' + SLUG + '/' + PAGE, {credentials: 'include'})
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                var box = document.getElementById('comments');
+                if (!data.comments || !data.comments.length) {
+                    box.innerHTML = '<div class="empty">No comments yet.</div>';
+                    return;
+                }
+                box.innerHTML = data.comments.map(function(comment) {
+                    return renderComment(comment, false);
+                }).join('');
             });
+    }
+
+    // build html for one comment and its nested replies
+    function renderComment(comment, isReply) {
+        var date = new Date(comment.created_at).toLocaleDateString();
+        var replyCount = comment.replies ? comment.replies.length : 0;
+
+
+        var repliesHtml = '';
+        if (replyCount) {
+            repliesHtml = comment.replies.map(function(child) {
+                return renderComment(child, true);
+            }).join('');
         }
 
-        function loadComments() {
-            var el = document.getElementById('comments-list');
-            fetch(API + '/comment/' + SLUG + '/' + PAGE, { credentials: 'include' })
-                .then(function (r) { return r.json(); })
-                .then(function (d) {
-                    if (!d.comments || d.comments.length === 0) {
-                        el.innerHTML = '<div class="empty">No comments yet.</div>';
-                        return;
-                    }
-                    el.innerHTML = d.comments.map(function (c) { return renderComment(c, false); }).join('');
-                })
-                .catch(function () { el.innerHTML = '<div class="empty">Failed to load comments.</div>'; });
+   
+        var toggle = '';
+        if (replyCount) {
+            toggle = '<button class="toggle-replies" onclick="toggleReplies(this)">&#9662; ' + replyCount + (replyCount === 1 ? ' reply' : ' replies') + '</button><div class="replies">' + repliesHtml + '</div>';
         }
 
-        function renderComment(c, isReply) {
-            var date = new Date(c.created_at).toLocaleDateString();
-            var replies = c.replies ? c.replies.map(function (r) { return renderComment(r, true); }).join('') : '';
-            var replyBtn = user ? '<button onclick="replyTo(\'' + c.id + '\',\'' + escAttr(c.username) + '\')">Reply</button>' : '';
+    
+        if (comment.deleted) {
             return '<div class="comment' + (isReply ? ' reply' : '') + '">' +
-                '<div class="c-head"><span class="c-author">' + esc(c.username) + '</span><span>' + date + '</span></div>' +
-                '<div class="c-body">' + esc(c.content) + '</div>' +
-                '<div class="c-actions">' + replyBtn + '</div>' +
-                replies + '</div>';
+                '<div class="c-head"><span class="c-author">' + esc(comment.username) + '</span><span>' + date + '</span></div>' +
+                '<div class="c-body" style="color:var(--muted);font-style:italic;">[Comment Deleted]</div>' +
+                toggle + '</div>';
         }
 
-        function replyTo(parentId, username) {
-            var id = 'reply-' + parentId;
-            var old = document.getElementById(id);
-            if (old) { old.remove(); return; }
-            var div = document.createElement('div');
-            div.id = id;
-            div.className = 'comment reply';
-            div.style.marginTop = '8px';
-            div.innerHTML = '<textarea id="ri-' + parentId + '" placeholder="Reply to ' + escAttr(username) + '..." ' +
-                'style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;' +
-                'background:var(--bg);color:var(--fg);resize:vertical;min-height:60px;"></textarea>' +
-                '<button onclick="submitReply(\'' + parentId + '\')" class="reply-btn" style="margin-top:6px;">Reply</button>';
-            document.getElementById('comments-list').appendChild(div);
-        }
 
-        function submitReply(parentId) {
-            var input = document.getElementById('ri-' + parentId);
-            if (!input) return;
-            var text = input.value.trim();
-            if (!text) return;
-            fetch(API + '/comment/create', {
-                method: 'POST', credentials: 'include',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ chat_slug: SLUG, page_id: PAGE, content: text, parent_id: parentId })
-            }).then(function (r) { if (r.ok) loadComments(); });
-        }
+        var liked = user && comment.liked_by && comment.liked_by.indexOf(user.id) !== -1;
+        var heart = liked ? '&#9829;' : '&#9825;';
+        var likeBtn = user
+            ? '<button class="' + (liked ? 'liked' : '') + '" onclick="toggleLike(\'' + comment.id + '\')">' + heart + ' ' + (comment.likes || 0) + '</button>'
+            : (comment.likes ? '<button disabled>&#9825; ' + comment.likes + '</button>' : '');
 
-        function esc(t) { var d = document.createElement('div'); d.textContent = String(t); return d.innerHTML; }
-        function escAttr(t) { return String(t).replace(/'/g, '&#39;').replace(/"/g, '&quot;'); }
+   
+        var replyBtn = user ? '<button onclick="replyTo(\'' + comment.id + '\',\'' + escAttr(comment.username) + '\')">Reply</button>' : '';
+        var editBtn = (user && user.id === comment.user_id) ? '<button onclick="editComment(\'' + comment.id + '\',\'' + escAttr(comment.content) + '\')">Edit</button>' : '';
+        var deleteBtn = (user && user.id === comment.user_id) ? '<button onclick="delComment(\'' + comment.id + '\')">Delete</button>' : '';
 
-        checkAuth().then(loadComments);
-        setInterval(loadComments, 30000);
+        return '<div class="comment' + (isReply ? ' reply' : '') + '">' +
+            '<div class="c-head"><span class="c-author">' + esc(comment.username) + '</span><span>' + date + '</span></div>' +
+            '<div class="c-body">' + esc(comment.content) + '</div>' +
+            '<div class="c-actions">' + likeBtn + replyBtn + editBtn + deleteBtn + '</div>' +
+            toggle + '</div>';
+    }
+
+
+    function replyTo(parentId, name) {
+        var boxId = 'reply-' + parentId;
+        var existing = document.getElementById(boxId);
+        if (existing) { existing.remove(); return; }
+
+        var box = document.createElement('div');
+        box.id = boxId;
+        box.className = 'comment reply';
+        box.style.marginTop = '8px';
+        box.innerHTML = '<textarea id="ri-' + parentId + '" placeholder="Reply to ' + escAttr(name) + '..." style="width:100%;padding:8px;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:13px;background:var(--bg);color:var(--fg);resize:vertical;min-height:60px;"></textarea>' +
+            '<button onclick="submitReply(\'' + parentId + '\')" class="reply-btn" style="margin-top:6px;">Reply</button>';
+        document.getElementById('comments').appendChild(box);
+    }
+
+
+    function submitReply(parentId) {
+        var textarea = document.getElementById('ri-' + parentId);
+        if (!textarea || !textarea.value.trim()) return;
+        fetch(API + '/comment/create', {
+            method: 'POST', credentials: 'include',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({chat_slug: SLUG, page_id: PAGE, content: textarea.value.trim(), parent_id: parentId})
+        }).then(function(response) { if (response.ok) loadComments(); });
+    }
+
+    function editComment(id, oldContent) {
+        var newContent = prompt('Edit comment:', oldContent);
+        if (newContent === null || !newContent.trim()) return;
+        fetch(API + '/comment/' + id, {
+            method: 'PUT', credentials: 'include',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({content: newContent.trim()})
+        }).then(function(response) { if (response.ok) loadComments(); });
+    }
+
+    function delComment(id) {
+        if (!confirm('Delete this comment?')) return;
+        fetch(API + '/comment/' + id, {method: 'DELETE', credentials: 'include'})
+            .then(function(response) { if (response.ok) loadComments(); });
+    }
+
+    function toggleLike(id) {
+        fetch(API + '/comment/' + id + '/like', {method: 'POST', credentials: 'include'})
+            .then(function(response) { if (response.ok) loadComments(); });
+    }
+
+
+    function toggleReplies(btn) {
+        var repliesDiv = btn.nextElementSibling;
+        var hidden = repliesDiv.classList.toggle('collapsed');
+        var count = repliesDiv.children.length;
+        var label = count + (count === 1 ? ' reply' : ' replies');
+        btn.innerHTML = hidden ? '&#9656; Show ' + label : '&#9662; ' + label;
+    }
+
+    // escape html to prevent xss
+    function esc(text) {
+        var div = document.createElement('div');
+        div.textContent = String(text);
+        return div.innerHTML;
+    }
+
+
+    function escAttr(text) {
+        return String(text).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+    }
+
+    function doLogout() {
+        fetch(API + '/auth/logout', {method: 'POST', credentials: 'include'})
+            .then(function() { user = null; renderUI(); loadComments(); });
+    }
+
+    init();
+    setInterval(loadComments, 30000);
     </script>
 </body>
 </html>

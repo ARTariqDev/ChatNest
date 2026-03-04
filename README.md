@@ -1,88 +1,102 @@
 # ChatNest
 
-Embeddable comment system. Like Disqus but self-hosted with Flask and MongoDB.
+Embeddable commenting system. Drop a chat widget on any page.
 
-Users create a "chat" (a comment forum), then embed it on any page via an iframe.
-Each page gets its own thread using a page ID.
+Built with Flask, MongoDB Atlas, vanilla JS.
 
 ## Setup
 
-Needs Python 3.11+ and a MongoDB instance (local or Atlas).
+1. Install deps:
+   ```
+   pip install -r requirements.txt
+   ```
 
-```
-cp .env.example .env       # edit with your mongo URI and secret key
-source venv/bin/activate
-pip install -r requirements.txt
-python app.py
-```
+2. Set env vars (optional, defaults in app.py):
+   ```
+   MONGO_URI=mongodb+srv://...
+   SECRET_KEY=something
+   ```
 
-Open `http://localhost:5000`.
+3. Run:
+   ```
+   python app.py
+   ```
 
-## How it works
+4. Open http://localhost:5000
 
-```
-/embed/{chat_slug}/{page_id}?bg=ffffff&fg=333333&accent=2563eb
-```
+## How It Works
 
-- `chat_slug` - the forum you created (e.g. "my-blog")
-- `page_id` - a unique ID per page (e.g. "post-42", a video ID, etc.)
-- Color params are optional hex values (no #)
+1. Sign up, log in
+2. Create a chat (gives you a slug)
+3. Go to chat settings, copy the embed code
+4. Paste the iframe on your site
 
-## Project structure
-
-```
-app.py              main flask app
-extensions.py       mongo, login manager, cors setup
-models/
-  user.py           user model (signup, login, password hashing)
-  chat.py           chat/forum model
-  comment.py        comment model (with threading)
-routes/
-  auth.py           signup, login, logout, auth check
-  chat.py           create/list chats
-  comment.py        create/list/edit/delete comments
-templates/
-  embed.html        the embeddable iframe widget
-  index.html        landing page
-  login.html        login form
-  signup.html       signup form
-  dashboard.html    manage your chats
-  chat-detail.html  embed code generator + color picker
-```
+Each chat can have multiple pages (use page_id param).
 
 ## API
 
-**Auth**
-- `POST /api/auth/signup` - create account
-- `POST /api/auth/login` - log in
-- `POST /api/auth/logout` - log out
-- `GET  /api/auth/check` - check if logged in
+All JSON. Auth via session cookies.
 
-**Chats**
-- `POST /api/chat/create` - new chat
-- `GET  /api/chat/<slug>` - get chat
-- `GET  /api/chat/my-chats` - your chats
+### Auth
 
-**Comments**
-- `POST /api/comment/create` - new comment
-- `GET  /api/comment/<slug>/<page_id>` - get comments for a page
-- `PUT  /api/comment/<id>` - edit comment
-- `DELETE /api/comment/<id>` - delete comment
+| Method | Path | Body | Notes |
+|--------|------|------|-------|
+| POST | /api/auth/signup | {username, email, password} | Creates account |
+| POST | /api/auth/login | {email, password} | Logs in |
+| POST | /api/auth/logout | - | Logs out |
+| GET | /api/auth/check | - | Returns auth status |
 
-## Deploying to Vercel
+### Chats
+
+| Method | Path | Body | Notes |
+|--------|------|------|-------|
+| POST | /api/chat/create | {name, slug, desc} | Owner only |
+| GET | /api/chat/<slug> | - | Public |
+| GET | /api/chat/list | - | All chats |
+| GET | /api/chat/mine | - | Your chats |
+| PUT | /api/chat/<slug> | {name, desc} | Owner only |
+| DELETE | /api/chat/<slug> | - | Owner only, deletes all comments too |
+
+### Comments
+
+| Method | Path | Body | Notes |
+|--------|------|------|-------|
+| POST | /api/comment/create | {chat_slug, page_id, content, parent_id} | Auth required |
+| GET | /api/comment/<slug>/<page> | - | Public, returns tree |
+| PUT | /api/comment/<id> | {content} | Owner only |
+| DELETE | /api/comment/<id> | - | Owner only, soft delete |
+| POST | /api/comment/<id>/like | - | Auth required, toggles like |
+
+### Comment Features
+
+- Replies: set parent_id when creating
+- Likes: toggle on/off, stored as array of user IDs
+- Soft delete: deleted comments show "[Comment Deleted]" but keep the reply tree
+- Collapsible threads: replies can be toggled open/closed in the widget
+
+### Embed Params
+
+Add URL params to customize colors:
 
 ```
-npm i -g vercel
-vercel login
-vercel --prod
+/embed/<slug>?page_id=home&bg=ffffff&fg=222222&accent=2563eb
 ```
 
-Set these env vars in the Vercel dashboard:
-- `MONGO_URI`
-- `SECRET_KEY`
-- `FLASK_ENV=production`
-- `CORS_ORIGINS=https://yourdomain.com`
+| Param | Default | What |
+|-------|---------|------|
+| page_id | default | Page identifier |
+| bg | ffffff | Background color (hex, no #) |
+| fg | 222222 | Text color |
+| accent | 2563eb | Button/link color |
 
-## License
+## Deploy to Vercel
 
-MIT
+Has a vercel.json. Just push and connect to Vercel.
+
+## Stack
+
+- Flask 3.1.3
+- Flask-PyMongo (MongoDB Atlas)
+- Flask-Login (sessions)
+- Flask-CORS (cross-origin for embeds)
+- Vanilla JS, no frameworks

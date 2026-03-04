@@ -1,28 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - ChatNest</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="nav-inner">
-            <a href="/" class="logo">ChatNest</a>
-            <div class="nav-links" id="auth-links"></div>
-        </div>
-    </nav>
+{% extends "base.html" %}
+{% block title %}Dashboard - ChatNest{% endblock %}
 
+{% block body %}
     <div class="wrap">
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                 <h2>My chats</h2>
-                <button onclick="showModal()" class="btn btn-primary">New chat</button>
+                <button onclick="showCreate()" class="btn btn-primary">New chat</button>
             </div>
-            <div id="chats-container">
-                <div class="loading">Loading...</div>
+            {% if chats %}
+            <div class="grid">
+                {% for c in chats %}
+                <div class="chat-card" onclick="location.href='/chat/{{ c.slug }}'">
+                    <h3>{{ c.name }}</h3>
+                    <p>{{ c.desc or 'No description' }}</p>
+                    <span class="chat-slug">{{ c.slug }}</span>
+                    <div style="margin-top:10px;display:flex;gap:8px;">
+                        <button class="btn btn-outline" onclick="event.stopPropagation();openEdit('{{ c.slug }}','{{ c.name|e }}','{{ c.desc|e }}')">Edit</button>
+                        <form method="POST" action="/chat/{{ c.slug }}/delete" style="display:inline;" onsubmit="return confirm('Delete &quot;{{ c.name|e }}&quot;? All comments will be deleted too.')">
+                            <button type="submit" class="btn btn-danger" onclick="event.stopPropagation()">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
             </div>
+            {% else %}
+            <div class="empty"><p>No chats yet.</p></div>
+            {% endif %}
         </div>
     </div>
 
@@ -31,80 +35,59 @@
         <div class="modal-box">
             <div class="modal-head">
                 <h3>New chat</h3>
-                <button class="modal-close" onclick="hideModal()">&times;</button>
+                <button class="modal-close" onclick="hideCreate()">&times;</button>
             </div>
-            <form id="create-form" onsubmit="handleCreate(event)">
+            <form method="POST" action="/chat/create">
                 <div class="form-group">
-                    <label for="chat-name">Name</label>
-                    <input type="text" id="chat-name" required placeholder="My Blog Comments">
+                    <label for="c-name">Name</label>
+                    <input type="text" name="name" id="c-name" required placeholder="My Blog Comments">
                 </div>
                 <div class="form-group">
-                    <label for="chat-slug">Slug</label>
-                    <input type="text" id="chat-slug" placeholder="my-blog (leave blank to auto-generate)">
+                    <label for="c-slug">Slug</label>
+                    <input type="text" name="slug" id="c-slug" placeholder="my-blog (leave blank to auto-generate)">
                 </div>
                 <div class="form-group">
-                    <label for="chat-desc">Description</label>
-                    <textarea id="chat-desc" placeholder="Optional"></textarea>
+                    <label for="c-desc">Description</label>
+                    <textarea name="description" id="c-desc" placeholder="Optional"></textarea>
                 </div>
                 <button type="submit" class="btn btn-primary" style="width:100%;">Create</button>
             </form>
         </div>
     </div>
 
-    <script src="/static/js/main.js"></script>
-    <script>
-        // make sure user is logged in
-        checkAuth().then(function (user) {
-            if (!user) window.location.href = '/login';
-            else loadChats();
-        });
 
-        function loadChats() {
-            fetch('/api/chat/my-chats', { credentials: 'include' })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    var el = document.getElementById('chats-container');
-                    if (!data.chats || data.chats.length === 0) {
-                        el.innerHTML = '<div class="empty"><p>No chats yet. Create one to get started.</p></div>';
-                        return;
-                    }
-                    el.innerHTML = '<div class="grid">' +
-                        data.chats.map(function (c) {
-                            return '<div class="chat-card" onclick="location.href=\'/chat/' + c.slug + '\'">' +
-                                '<h3>' + c.name + '</h3>' +
-                                '<p>' + (c.description || 'No description') + '</p>' +
-                                '<span class="chat-slug">' + c.slug + '</span>' +
-                                '</div>';
-                        }).join('') +
-                        '</div>';
-                });
-        }
+    <div id="edit-modal" class="modal">
+        <div class="modal-box">
+            <div class="modal-head">
+                <h3>Edit chat</h3>
+                <button class="modal-close" onclick="hideEdit()">&times;</button>
+            </div>
+            <form id="edit-form" method="POST" action="">
+                <div class="form-group">
+                    <label for="e-name">Name</label>
+                    <input type="text" name="name" id="e-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="e-desc">Description</label>
+                    <textarea name="description" id="e-desc"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;">Save</button>
+            </form>
+        </div>
+    </div>
+{% endblock %}
 
-        function showModal() { document.getElementById('create-modal').classList.add('active'); }
-        function hideModal() {
-            document.getElementById('create-modal').classList.remove('active');
-            document.getElementById('create-form').reset();
-        }
+{% block scripts %}
+<script>
+function showCreate() { document.getElementById('create-modal').classList.add('active'); }
+function hideCreate() { document.getElementById('create-modal').classList.remove('active'); }
 
-        function handleCreate(e) {
-            e.preventDefault();
-            var body = {
-                name: document.getElementById('chat-name').value,
-                slug: document.getElementById('chat-slug').value || undefined,
-                description: document.getElementById('chat-desc').value || undefined,
-            };
-            fetch('/api/chat/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(body),
-            })
-            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-            .then(function (r) {
-                if (r.ok) { hideModal(); loadChats(); }
-                else showAlert(r.d.error || 'Failed', 'error');
-            });
-        }
-    </script>
-</body>
-</html>
+function openEdit(slug, name, desc) {
+    document.getElementById('edit-form').action = '/chat/' + slug + '/edit';
+    document.getElementById('e-name').value = name;
+    document.getElementById('e-desc').value = desc;
+    document.getElementById('edit-modal').classList.add('active');
+}
+function hideEdit() { document.getElementById('edit-modal').classList.remove('active'); }
+</script>
+{% endblock %}

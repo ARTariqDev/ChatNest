@@ -1,25 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ChatNest</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="nav-inner">
-            <a href="/" class="logo">ChatNest</a>
-            <div class="nav-links" id="auth-links"></div>
-        </div>
-    </nav>
+{% extends "base.html" %}
+{% block title %}ChatNest{% endblock %}
 
+{% block body %}
     <div class="hero">
         <h1>Comments for any website</h1>
         <p>Create a forum, get an embed code, paste it on your site. That's it.</p>
         <div class="hero-actions">
+            {% if current_user.is_authenticated %}
+            <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+            {% else %}
             <a href="/signup" class="btn btn-primary">Sign up</a>
             <a href="/dashboard" class="btn btn-outline">Dashboard</a>
+            {% endif %}
         </div>
     </div>
 
@@ -39,9 +31,9 @@
             </div>
         </div>
 
-        <div class="card" style="margin-top: 24px;">
+        <div class="card" style="margin-top:24px;">
             <h3>How it works</h3>
-            <ol style="line-height: 2; margin-left: 20px; margin-top: 8px;">
+            <ol style="line-height:2;margin-left:20px;margin-top:8px;">
                 <li>Sign up and create a chat (a forum for your site)</li>
                 <li>Set a page ID for each page you want comments on</li>
                 <li>Copy the iframe embed code</li>
@@ -49,7 +41,4 @@
             </ol>
         </div>
     </div>
-
-    <script src="/static/js/main.js"></script>
-</body>
-</html>
+{% endblock %}

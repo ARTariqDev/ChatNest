@@ -9,8 +9,7 @@ class User(UserMixin):
         self.id = str(data['_id'])
         self.username = data.get('username')
         self.email = data.get('email')
-        self.password_hash = data.get('password_hash')
-        self.created_at = data.get('created_at')
+        self.pw_hash = data.get('password_hash')
 
     @staticmethod
     def create(username, email, password):
@@ -18,37 +17,31 @@ class User(UserMixin):
             'username': username,
             'email': email,
             'password_hash': generate_password_hash(password),
-            'created_at': ObjectId().generation_time,
         }
         result = mongo.db.users.insert_one(doc)
         doc['_id'] = result.inserted_id
         return User(doc)
 
     @staticmethod
-    def get_by_id(user_id):
+    def get_by_id(uid):
         try:
-            data = mongo.db.users.find_one({'_id': ObjectId(user_id)})
-            return User(data) if data else None
+            found = mongo.db.users.find_one({'_id': ObjectId(uid)})
+            return User(found) if found else None
         except:
             return None
 
     @staticmethod
     def get_by_email(email):
-        data = mongo.db.users.find_one({'email': email})
-        return User(data) if data else None
+        found = mongo.db.users.find_one({'email': email})
+        return User(found) if found else None
 
     @staticmethod
-    def get_by_username(username):
-        data = mongo.db.users.find_one({'username': username})
-        return User(data) if data else None
+    def get_by_username(name):
+        found = mongo.db.users.find_one({'username': name})
+        return User(found) if found else None
 
     def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+        return check_password_hash(self.pw_hash, password)
 
     def to_dict(self):
-        return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-        }
+        return {'id': self.id, 'username': self.username, 'email': self.email}

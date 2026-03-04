@@ -7,37 +7,25 @@ chat_bp = Blueprint('chat', __name__)
 
 
 def slugify(text):
-    text = text.lower().strip()
-    text = re.sub(r'[^\w\s-]', '', text)
-    text = re.sub(r'[\s_-]+', '-', text)
-    text = re.sub(r'^-+|-+$', '', text)
-    return text
+    text = re.sub(r'[^\w\s-]', '', text.lower().strip())
+    return re.sub(r'[\s_-]+', '-', text).strip('-')
 
 
 @chat_bp.route('/create', methods=['POST'])
 @login_required
-def create_chat():
+def create():
     data = request.get_json()
-
     if not data or not data.get('name'):
-        return jsonify({'error': 'Name is required'}), 400
-
+        return jsonify({'error': 'Name required'}), 400
     slug = data.get('slug') or slugify(data['name'])
-
     if Chat.get_by_slug(slug):
-        return jsonify({'error': 'Slug already taken'}), 400
-
-    chat = Chat.create(
-        name=data['name'],
-        slug=slug,
-        owner_id=current_user.id,
-        description=data.get('description', ''),
-    )
+        return jsonify({'error': 'Slug taken'}), 400
+    chat = Chat.create(data['name'], slug, current_user.id, data.get('description', ''))
     return jsonify({'chat': chat.to_dict()}), 201
 
 
 @chat_bp.route('/<slug>')
-def get_chat(slug):
+def get(slug):
     chat = Chat.get_by_slug(slug)
     if not chat:
         return jsonify({'error': 'Not found'}), 404
@@ -45,13 +33,36 @@ def get_chat(slug):
 
 
 @chat_bp.route('/list')
-def list_chats():
-    chats = Chat.get_all()
-    return jsonify({'chats': [c.to_dict() for c in chats]})
+def list_all():
+    return jsonify({'chats': [c.to_dict() for c in Chat.get_all()]})
 
 
 @chat_bp.route('/my-chats')
 @login_required
-def my_chats():
-    chats = Chat.get_by_owner(current_user.id)
-    return jsonify({'chats': [c.to_dict() for c in chats]})
+def mine():
+    return jsonify({'chats': [c.to_dict() for c in Chat.get_by_owner(current_user.id)]})
+
+
+@chat_bp.route('/<slug>', methods=['PUT'])
+@login_required
+def update(slug):
+    chat = Chat.get_by_slug(slug)
+    if not chat:
+        return jsonify({'error': 'Not found'}), 404
+    if chat.owner_id != current_user.id:
+        return jsonify({'error': 'Not yours'}), 403
+    data = request.get_json()
+    chat.update(name=data.get('name'), desc=data.get('description'))
+    return jsonify({'chat': chat.to_dict()})
+
+
+@chat_bp.route('/<slug>', methods=['DELETE'])
+@login_required
+def delete(slug):
+    chat = Chat.get_by_slug(slug)
+    if not chat:
+        return jsonify({'error': 'Not found'}), 404
+    if chat.owner_id != current_user.id:
+        return jsonify({'error': 'Not yours'}), 403
+    chat.delete()
+    return jsonify({'ok': True})

@@ -1,80 +1,98 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat - ChatNest</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <nav class="navbar">
-        <div class="nav-inner">
-            <a href="/" class="logo">ChatNest</a>
-            <div class="nav-links" id="auth-links"></div>
-        </div>
-    </nav>
+{% extends "base.html" %}
+{% block title %}Chat - ChatNest{% endblock %}
 
+{% block body %}
     <div class="wrap">
         <a href="/dashboard" style="font-size:14px;">Back to dashboard</a>
 
-        <div id="chat-info" class="card" style="margin-top:12px;">
-            <div class="loading">Loading...</div>
+        <div class="card" style="margin-top:12px;">
+            <h2>{{ chat.name }}</h2>
+            <p style="color:#666;margin:6px 0;">{{ chat.desc or '' }}</p>
+            <span class="chat-slug">{{ chat.slug }}</span>
+            {% if is_owner %}
+            <div style="margin-top:12px;display:flex;gap:8px;">
+                <button class="btn btn-outline" onclick="showEditChat()">Edit</button>
+                <form method="POST" action="/chat/{{ chat.slug }}/delete" style="display:inline;" onsubmit="return confirm('Delete this chat and all its comments?')">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+            {% endif %}
         </div>
+
+        {% if is_owner %}
+        <!-- edit chat modal -->
+        <div id="edit-chat-modal" class="modal">
+            <div class="modal-box">
+                <div class="modal-head">
+                    <h3>Edit chat</h3>
+                    <button class="modal-close" onclick="hideEditChat()">&times;</button>
+                </div>
+                <form method="POST" action="/chat/{{ chat.slug }}/edit">
+                    <div class="form-group">
+                        <label for="ec-name">Name</label>
+                        <input type="text" name="name" id="ec-name" required value="{{ chat.name }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="ec-desc">Description</label>
+                        <textarea name="description" id="ec-desc">{{ chat.desc or '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">Save</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
 
         <div class="card">
             <h3>Embed settings</h3>
-
             <div class="form-group" style="margin-top:12px;">
-                <label for="page-id-input">Page ID</label>
-                <input type="text" id="page-id-input" value="page-example" oninput="updateEmbed()">
-                <small>A unique ID per page, like a video ID or article slug.</small>
+                <label for="pid">Page ID</label>
+                <input type="text" id="pid" value="page-example" oninput="updateEmbed()">
+                <small>Unique per page -- like a video ID or article slug.</small>
             </div>
 
-            <!-- presets -->
             <label style="font-size:14px;font-weight:500;">Color presets</label>
             <div class="preset-row" style="margin-top:6px;">
-                <button class="preset-btn" onclick="applyPreset('#ffffff','#333333','#007bff')">Light</button>
-                <button class="preset-btn" onclick="applyPreset('#1a1a2e','#e0e0e0','#7c6af7')">Dark</button>
-                <button class="preset-btn" onclick="applyPreset('#0f0f0f','#ffffff','#ff0000')">YouTube</button>
-                <button class="preset-btn" onclick="applyPreset('#fafafa','#111111','#1db954')">Spotify</button>
-                <button class="preset-btn" onclick="applyPreset('#fff8f0','#2d2d2d','#e8612c')">Warm</button>
-                <button class="preset-btn" onclick="applyPreset('#f0f7ff','#1a2a3a','#0066cc')">Ocean</button>
+                <button class="preset-btn" onclick="preset('#ffffff','#333333','#007bff')">Light</button>
+                <button class="preset-btn" onclick="preset('#1a1a2e','#e0e0e0','#7c6af7')">Dark</button>
+                <button class="preset-btn" onclick="preset('#0f0f0f','#ffffff','#ff0000')">YouTube</button>
+                <button class="preset-btn" onclick="preset('#fafafa','#111111','#1db954')">Spotify</button>
+                <button class="preset-btn" onclick="preset('#fff8f0','#2d2d2d','#e8612c')">Warm</button>
+                <button class="preset-btn" onclick="preset('#f0f7ff','#1a2a3a','#0066cc')">Ocean</button>
             </div>
 
-            <!-- color pickers -->
             <div class="color-grid">
                 <div>
                     <label style="font-size:13px;">Background</label>
                     <div class="color-row">
-                        <input type="color" id="color-bg" value="#ffffff" oninput="syncHex('bg');updateEmbed()">
-                        <input type="text" id="hex-bg" value="#ffffff" maxlength="7" oninput="syncPicker('bg');updateEmbed()">
+                        <input type="color" id="col-bg" value="#ffffff" oninput="syncPickerToText('bg');updateEmbed()">
+                        <input type="text" id="hex-bg" value="#ffffff" maxlength="7" oninput="syncTextToPicker('bg');updateEmbed()">
                     </div>
                 </div>
                 <div>
                     <label style="font-size:13px;">Text</label>
                     <div class="color-row">
-                        <input type="color" id="color-fg" value="#333333" oninput="syncHex('fg');updateEmbed()">
-                        <input type="text" id="hex-fg" value="#333333" maxlength="7" oninput="syncPicker('fg');updateEmbed()">
+                        <input type="color" id="col-fg" value="#333333" oninput="syncPickerToText('fg');updateEmbed()">
+                        <input type="text" id="hex-fg" value="#333333" maxlength="7" oninput="syncTextToPicker('fg');updateEmbed()">
                     </div>
                 </div>
                 <div>
                     <label style="font-size:13px;">Accent</label>
                     <div class="color-row">
-                        <input type="color" id="color-accent" value="#007bff" oninput="syncHex('accent');updateEmbed()">
-                        <input type="text" id="hex-accent" value="#007bff" maxlength="7" oninput="syncPicker('accent');updateEmbed()">
+                        <input type="color" id="col-accent" value="#007bff" oninput="syncPickerToText('accent');updateEmbed()">
+                        <input type="text" id="hex-accent" value="#007bff" maxlength="7" oninput="syncTextToPicker('accent');updateEmbed()">
                     </div>
                 </div>
             </div>
 
             <h4 style="margin-top:16px;">Embed code</h4>
             <div class="code-block">
-                <button class="copy-btn" onclick="copyEmbed()">Copy</button>
-                <pre id="embed-code"></pre>
+                <button class="copy-btn" onclick="copyToClipboard(document.getElementById('code').textContent, this)">Copy</button>
+                <pre id="code"></pre>
             </div>
 
             <h4 style="margin-top:20px;">Preview</h4>
             <div style="border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-top:8px;">
-                <iframe id="preview-iframe" width="100%" height="450" frameborder="0" style="display:block;"></iframe>
+                <iframe id="preview" width="100%" height="450" frameborder="0" style="display:block;"></iframe>
             </div>
         </div>
 
@@ -86,63 +104,55 @@
             </div>
         </div>
     </div>
+{% endblock %}
 
-    <script src="/static/js/main.js"></script>
-    <script>
-        var slug = window.location.pathname.split('/').pop();
-        var chat = null;
+{% block scripts %}
+<script>
+var slug = '{{ chat.slug }}';
 
-        fetch('/api/chat/' + slug)
-            .then(function (r) { return r.json(); })
-            .then(function (d) {
-                if (!d.chat) {
-                    document.getElementById('chat-info').innerHTML = '<p>Chat not found.</p>';
-                    return;
-                }
-                chat = d.chat;
-                document.getElementById('chat-info').innerHTML =
-                    '<h2>' + chat.name + '</h2>' +
-                    '<p style="color:#666;margin:6px 0;">' + (chat.description || '') + '</p>' +
-                    '<span class="chat-slug">' + chat.slug + '</span>';
-                updateEmbed();
-            });
+{% if is_owner %}
+function showEditChat() { document.getElementById('edit-chat-modal').classList.add('active'); }
+function hideEditChat() { document.getElementById('edit-chat-modal').classList.remove('active'); }
+{% endif %}
 
-        function syncHex(k) {
-            document.getElementById('hex-' + k).value = document.getElementById('color-' + k).value;
-        }
-        function syncPicker(k) {
-            var v = document.getElementById('hex-' + k).value;
-            if (/^#[0-9a-fA-F]{6}$/.test(v)) document.getElementById('color-' + k).value = v;
-        }
-        function applyPreset(bg, fg, accent) {
-            document.getElementById('color-bg').value = bg;  document.getElementById('hex-bg').value = bg;
-            document.getElementById('color-fg').value = fg;  document.getElementById('hex-fg').value = fg;
-            document.getElementById('color-accent').value = accent; document.getElementById('hex-accent').value = accent;
-            updateEmbed();
-        }
+// sync color picker -> hex text input
+function syncPickerToText(key) {
+    document.getElementById('hex-' + key).value = document.getElementById('col-' + key).value;
+}
 
-        function updateEmbed() {
-            if (!chat) return;
-            var pid    = document.getElementById('page-id-input').value || 'page-example';
-            var bg     = document.getElementById('hex-bg').value.replace('#', '');
-            var fg     = document.getElementById('hex-fg').value.replace('#', '');
-            var accent = document.getElementById('hex-accent').value.replace('#', '');
-            var base   = window.location.origin;
-            var src    = base + '/embed/' + chat.slug + '/' + pid + '?bg=' + bg + '&fg=' + fg + '&accent=' + accent;
+// sync hex text input -> color picker
+function syncTextToPicker(key) {
+    var value = document.getElementById('hex-' + key).value;
+    if (/^#[0-9a-fA-F]{6}$/.test(value)) {
+        document.getElementById('col-' + key).value = value;
+    }
+}
 
-            document.getElementById('embed-code').textContent =
-                '<iframe\n  src="' + src + '"\n  width="100%"\n  height="600"\n  frameborder="0">\n</iframe>';
-            document.getElementById('preview-iframe').src = src;
-            document.getElementById('api-get').textContent = 'GET ' + base + '/api/comment/' + chat.slug + '/' + pid;
-            document.getElementById('api-post').textContent = 'POST ' + base + '/api/comment/create';
-        }
 
-        function copyEmbed() {
-            copyToClipboard(
-                document.getElementById('embed-code').textContent,
-                document.querySelector('.copy-btn')
-            );
-        }
-    </script>
-</body>
-</html>
+function preset(bg, fg, accent) {
+    document.getElementById('col-bg').value = bg;
+    document.getElementById('hex-bg').value = bg;
+    document.getElementById('col-fg').value = fg;
+    document.getElementById('hex-fg').value = fg;
+    document.getElementById('col-accent').value = accent;
+    document.getElementById('hex-accent').value = accent;
+    updateEmbed();
+}
+
+
+function updateEmbed() {
+    var pageId = document.getElementById('pid').value || 'page-example';
+    var bg = document.getElementById('hex-bg').value.replace('#', '');
+    var fg = document.getElementById('hex-fg').value.replace('#', '');
+    var accent = document.getElementById('hex-accent').value.replace('#', '');
+    var src = location.origin + '/embed/' + slug + '/' + pageId + '?bg=' + bg + '&fg=' + fg + '&accent=' + accent;
+
+    document.getElementById('code').textContent = '<iframe\n  src="' + src + '"\n  width="100%"\n  height="600"\n  frameborder="0">\n</iframe>';
+    document.getElementById('preview').src = src;
+    document.getElementById('api-get').textContent = 'GET ' + location.origin + '/api/comment/' + slug + '/' + pageId;
+    document.getElementById('api-post').textContent = 'POST ' + location.origin + '/api/comment/create';
+}
+
+updateEmbed();
+</script>
+{% endblock %}
